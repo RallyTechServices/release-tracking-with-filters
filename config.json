@@ -1,0 +1,11 @@
+{
+    "className": "release-tracking-with-filters",
+    "server": "https://rally1.rallydev.com",
+    "sdk": "2.1",
+    "apiKey": "_PUT_APIKEY_HERE_",
+    "javascript": [
+        "node_modules/@agile-central-technical-services/utils-shared-views/index.js",
+        "src/javascript/utils/*.js",
+        "src/javascript/*.js"
+    ]
+}
