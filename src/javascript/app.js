@@ -189,27 +189,6 @@ Ext.define("release-tracking-with-filters", {
         return this.iterationsStore.load();
     },
 
-    /*
-    _updatePiStoriesStore: function(pis) {
-        var queries = _.map(pis, function(pi) {
-            return {
-                property: this.lowestPiTypeName,
-                operator: '=',
-                value: pi.get('_ref')
-            }
-        }, this);
-        var filters = Rally.data.wsapi.Filter.or(queries) || [];
-        this.piStoriesStore = Ext.create('Rally.data.wsapi.artifact.Store', {
-            models: ['HierarchicalRequirement'],
-            autoLoad: false,
-            filters: filters,
-            fetch: Constants.STORIES_FETCH,
-            enablePostGet: true
-        });
-        return this.piStoriesStore.load();
-    },
-    */
-
     _getDefects: function() {
         // TODO (tj) needed?
     },
@@ -275,10 +254,41 @@ Ext.define("release-tracking-with-filters", {
                 storeConfig: {
                     context: dataContext,
                     filters: releaseFilters,
+                },
+                listeners: {
+                    scope: this,
+                    itemclick: function(grid, record, item, index) {
+                        // Ignore clicks on non root items
+                        if (record.get('_type') == this.lowestPiTypePath.toLowerCase()) {
+                            this._onPiSelected(record);
+                        }
+                    }
                 }
             }
         });
         this.setLoading(false);
+    },
+
+    _onPiSelected: function(pi) {
+        var filter;
+        if (this.selectedPi == pi) {
+            // Unselecting the pi
+            filter = this.storiesFilter;
+            delete this.selectedPi;
+        }
+        else {
+            this.selectedPi = pi;
+            filter = Rally.data.wsapi.Filter({
+                property: this.lowestPiTypeName,
+                operator: '=',
+                value: pi.get('_ref')
+            });
+        }
+        this.board.refresh({
+            storeConfig: {
+                filters: filter
+            }
+        });
     },
 
     _addPisBoard: function(filter, iterations) {
@@ -309,7 +319,7 @@ Ext.define("release-tracking-with-filters", {
             },
             fields: [
                 'Feature'
-            ]
+            ],
         })
 
         this.board = boardArea.add({
@@ -319,12 +329,16 @@ Ext.define("release-tracking-with-filters", {
             height: boardArea.getHeight(),
             storeConfig: {
                 filters: filter,
-                fetch: 'Feature'
+                fetch: 'Feature',
+                groupField: 'Feature'
             },
             rowConfig: {
                 field: 'Project'
             },
-            columns: columns
+            columns: columns,
+            cardConfig: {
+                xtype: 'storyfeaturecard'
+            }
 
         })
     },
