@@ -284,6 +284,7 @@ Ext.define("release-tracking-with-filters", {
                 value: pi.get('_ref')
             });
         }
+        this.buckets = {};
         this.board.refresh({
             storeConfig: {
                 filters: filter
@@ -294,6 +295,8 @@ Ext.define("release-tracking-with-filters", {
     _addPisBoard: function(filter, iterations) {
         var boardArea = this.down('#board-area')
         boardArea.removeAll();
+
+        this.buckets = {};
 
         var context = this.getContext();
         var dataContext = context.getDataContext();
@@ -337,10 +340,36 @@ Ext.define("release-tracking-with-filters", {
             },
             columns: columns,
             cardConfig: {
-                xtype: 'storyfeaturecard'
+                xtype: 'storyfeaturecard',
+                isHiddenFunc: this._isCardHidden.bind(this)
             }
 
         })
+    },
+
+    _getCardBucketKey: function(card) {
+        var record = card.getRecord();
+        var iterationId = null;
+        var iteration = record.get('Iteration');
+        if (iteration) {
+            iterationId = iteration.ObjectID;
+        }
+        var projectId = record.get('Project').ObjectID;
+        var featureId = record.get('Feature').ObjectID;
+        return [featureId, projectId, iterationId].join('-');
+    },
+
+
+    _isCardHidden: function(card) {
+        var result = false;
+        var key = this._getCardBucketKey(card);
+        if (this.buckets.hasOwnProperty(key)) {
+            result = true;
+        }
+        else {
+            this.buckets[key] = this;
+        }
+        return result;
     },
 
     viewChange: function() {
