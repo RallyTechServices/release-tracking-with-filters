@@ -301,28 +301,53 @@ Ext.define("release-tracking-with-filters", {
         var context = this.getContext();
         var dataContext = context.getDataContext();
 
-        // Create a column for each iteration
-        var columns = _.map(iterations, function(iteration) {
+        // Create a column for each iteration shared by the projects
+        var endDateSorted = _.sortBy(iterations, function(i) {
+            return i.get('EndDate');
+        });
+        var uniqueIterations = _.unique(endDateSorted, function(i) {
+            return this._getIterationKey(i)
+        }, this);
+
+        var columns = _.map(uniqueIterations, function(iteration) {
             return {
                 xtype: 'rallycardboardcolumn',
-                value: iteration.get('_ref'),
+                //value: iteration.get('Name'),
                 columnHeaderConfig: {
                     headerTpl: iteration.get('Name')
                 },
-                fields: [
-                    'Feature'
-                ]
+                fields: ['Feature'],
+                additionalFetchFields: Constants.STORIES_FETCH,
+                getStoreFilter: function() {
+                    // Don't return this column 'value' as a filter
+                    return [{
+                            property: 'Iteration.Name',
+                            value: iteration.get('Name')
+                        },
+                        {
+                            property: 'Iteration.StartDate',
+                            value: iteration.get('StartDate')
+                        },
+                        {
+                            property: 'Iteration.EndDate',
+                            value: iteration.get('EndDate')
+                        }
+                    ];
+                },
+                isMatchingRecord: function(record) {
+                    return true;
+                }
             }
         }, this);
+        // Add a column for unscheduled stories
         columns.push({
             xtype: 'rallycardboardcolumn',
             value: null,
             columnHeaderConfig: {
                 headerTpl: Constants.UNSCHEDULED
             },
-            fields: [
-                'Feature'
-            ],
+            fields: ['Feature'],
+            additionalFetchFields: Constants.STORIES_FETCH
         })
 
         this.board = boardArea.add({
@@ -350,13 +375,23 @@ Ext.define("release-tracking-with-filters", {
     _getCardBucketKey: function(card) {
         var record = card.getRecord();
         var iterationId = null;
-        var iteration = record.get('Iteration');
-        if (iteration) {
-            iterationId = iteration.ObjectID;
-        }
+        var iterationKey = this._getIterationKey(record.get('Iteration'));
         var projectId = record.get('Project').ObjectID;
         var featureId = record.get('Feature').ObjectID;
-        return [featureId, projectId, iterationId].join('-');
+        return [featureId, projectId, iterationKey].join('-');
+    },
+
+    _getIterationKey: function(iteration) {
+        var result = '';
+        if (iteration) {
+            if (iteration.get) {
+                result = iteration.get('Name') + iteration.get('StartDate').toISOString() + iteration.get('EndDate').toISOString();
+            }
+            else {
+                result = iteration.Name + iteration.StartDate + iteration.EndDate;
+            }
+        }
+        return result;
     },
 
 

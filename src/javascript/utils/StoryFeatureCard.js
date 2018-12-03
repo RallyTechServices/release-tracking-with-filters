@@ -9,5 +9,16 @@ Ext.define('StoryFeatureCard', {
     initComponent: function() {
         this.hidden = this.isHiddenFunc(this);
         this.callParent(arguments);
+    },
+
+    setupPlugins: function() {
+        [];
+    },
+
+    _buildHtml: function() {
+        var html = [];
+        var feature = this.record.get('Feature');
+        html.push('<span>' + feature.FormattedID + '</span>');
+        return html.join('\n');
     }
 });
