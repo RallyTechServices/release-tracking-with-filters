@@ -12,6 +12,7 @@
     "@agile-central-technical-services/utils-shared-views": "^1.0.2"
   },
   "devDependencies": {
+    "@agile-central-technical-services/utils-ancestor-pi-app-filter": "^2.3.0",
     "grunt": "~0.4.5",
     "grunt-cli": "0.1.6",
     "grunt-contrib-jasmine": "1.1.0",

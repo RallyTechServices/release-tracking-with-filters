@@ -1,4 +1,4 @@
-/* global Ext _ Rally Constants Deft */
+/* global Ext _ Rally Constants Deft Utils */
 Ext.define("release-tracking-with-filters", {
     extend: 'Rally.app.App',
     componentCls: 'app',
@@ -12,6 +12,9 @@ Ext.define("release-tracking-with-filters", {
         layout: {
             type: 'hbox'
         }
+    }, {
+        id: Utils.AncestorPiAppFilter.RENDER_AREA_ID,
+        xtype: 'container',
     }, {
         id: 'data-area',
         xtype: 'container',
@@ -45,8 +48,10 @@ Ext.define("release-tracking-with-filters", {
     },
 
     launch: function() {
-        var releasePickerDeferred = Ext.create('Deft.Deferred');
 
+        // TODO (tj) Add ancestor filter
+
+        var releasePickerDeferred = Ext.create('Deft.Deferred');
         this.down('#controls-area').add({
             xtype: 'rallyreleasecombobox',
             id: 'release-picker',
@@ -65,9 +70,34 @@ Ext.define("release-tracking-with-filters", {
                     releasePickerDeferred.resolve();
                 }
             }
-        })
+        });
 
-        var promises = [releasePickerDeferred.promise];
+        var ancestorFilterDeferred = Ext.create('Deft.Deferred');
+        this.ancestorFilterPlugin = Ext.create('Utils.AncestorPiAppFilter', {
+            ptype: 'UtilsAncestorPiAppFilter',
+            pluginId: 'ancestorFilterPlugin',
+            publisher: false, // Publish events to other apps using this plugin
+            settingsConfig: {
+                labelWidth: 150,
+                margin: 10
+            },
+            listeners: {
+                scope: this,
+                ready: function(plugin) {
+                    // Plugin ready, begin listening for selection changes
+                    plugin.addListener({
+                        scope: this,
+                        select: this._update
+                    });
+                    ancestorFilterDeferred.resolve();
+                },
+            }
+        });
+        // Must add the filter at runtime (instead of in config) to make sure we can
+        // catch its ready event.
+        this.addPlugin(this.ancestorFilterPlugin);
+
+        var promises = [releasePickerDeferred.promise, ancestorFilterDeferred.promise];
 
         // Get lowest PI type.
         promises.push(Rally.data.util.PortfolioItemHelper.getPortfolioItemTypes().then({
@@ -108,7 +138,11 @@ Ext.define("release-tracking-with-filters", {
                         value: pi.get('_ref')
                     }
                 }, this);
-                this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [];
+                // If there are no PIs, then explicitly filter out all stories
+                this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
+                    property: 'ObjectID',
+                    value: 0
+                }];
             }
         });
 
@@ -145,19 +179,20 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _updatePisStore: function() {
-        var dataContext = this.getContext().getDataContext();
-        var releaseFilters = [{
-            property: 'Release',
-            value: this.selectedRelease.get('_ref')
-        }];
+        this.currentPiDataContext = this.getContext().getDataContext();
+        if (this.searchAllProjects()) {
+            this.currentPiDataContext.project = null;
+        }
+        this.currentPiQueries = this._getPiQueries();
+
         return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
             models: [this.lowestPiTypePath],
             autoLoad: false,
             fetch: Constants.FEATURE_FETCH,
-            filters: releaseFilters,
+            filters: this.currentPiQueries,
             enableHierarchy: true,
             remoteSort: true,
-            context: dataContext,
+            context: this.currentPiDataContext,
             enablePostGet: true,
             enableRootLevelPostGet: true,
             clearOnLoad: false
@@ -168,6 +203,25 @@ Ext.define("release-tracking-with-filters", {
                 return this.piStore.load();
             }
         });
+    },
+
+    _getPiQueries: function() {
+        var queries = [],
+            timeboxScope = this.getContext().getTimeboxScope();
+
+        queries.push({
+            property: 'Release',
+            value: this.selectedRelease.get('_ref')
+        });
+
+        if (timeboxScope && _.any(this.modelNames, timeboxScope.isApplicable, timeboxScope)) {
+            queries.push(timeboxScope.getQueryFilter());
+        }
+        var ancestorFilter = this.ancestorFilterPlugin.getFilterForType(this.modelNames[0]);
+        if (ancestorFilter) {
+            queries.push(ancestorFilter);
+        }
+        return queries;
     },
 
     _updateIterationsStore: function() {
@@ -195,21 +249,14 @@ Ext.define("release-tracking-with-filters", {
 
     _addPisGrid: function(store) {
         var gridArea = this.down('#grid-area')
-        gridArea.removeAll();
-
+        if (gridArea) {
+            gridArea.removeAll();
+        }
         var currentModelName = this.modelNames[0];
-
-        var context = this.getContext();
-        var dataContext = context.getDataContext();
-
-        var releaseFilters = [{
-            property: 'Release',
-            value: this.selectedRelease.get('_ref')
-        }];
 
         this.grid = gridArea.add({
             xtype: 'rallygridboard',
-            context: context,
+            context: this.getContext(),
             modelNames: this.modelNames,
             toggleState: 'grid',
             height: gridArea.getHeight(),
@@ -252,8 +299,8 @@ Ext.define("release-tracking-with-filters", {
             gridConfig: {
                 store: store,
                 storeConfig: {
-                    context: dataContext,
-                    filters: releaseFilters,
+                    context: this.currentPiDataContext,
+                    filters: this.currentPiQueries,
                 },
                 listeners: {
                     scope: this,
@@ -439,5 +486,9 @@ Ext.define("release-tracking-with-filters", {
         return [{
             xtype: 'container'
         }];
-    }
+    },
+
+    searchAllProjects: function() {
+        return this.ancestorFilterPlugin.getIgnoreProjectScope();
+    },
 });
