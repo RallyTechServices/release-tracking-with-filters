@@ -20,3 +20,17 @@
     font-weight: bold;
     font-size: medium;
 }
+
+.iteration-name {
+    font-size: medium;
+}
+
+.iteration-dates {
+    font-size: x-small;
+    font-weight: normal;
+}
+
+.cardboard-column-header {
+    margin-left: unset;
+    margin-right: unset;
+}

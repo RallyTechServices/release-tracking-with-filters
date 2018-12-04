@@ -52,9 +52,11 @@ Ext.define("release-tracking-with-filters", {
         // TODO (tj) Add ancestor filter
 
         var releasePickerDeferred = Ext.create('Deft.Deferred');
-        this.down('#controls-area').add({
+        var controlsArea = this.down('#controls-area');
+        controlsArea.add({
             xtype: 'rallyreleasecombobox',
             id: 'release-picker',
+            allowNoEntry: true,
             fieldLabel: Constants.RELEASE_CONTROL_LABEL,
             labelCls: Constants.RELEASE_CONTROL_LABEL_CLASS,
             valueField: '_ref',
@@ -71,6 +73,27 @@ Ext.define("release-tracking-with-filters", {
                 }
             }
         });
+        controlsArea.add([{
+            xtype: 'rallydatefield',
+            id: 'start-date-picker',
+            fieldLabel: Constants.START_DATE,
+            listeners: {
+                scope: this,
+                change: function(cmp, newValue) {
+                    this._update();
+                }
+            }
+        }, {
+            xtype: 'rallydatefield',
+            id: 'end-date-picker',
+            fieldLabel: Constants.END_DATE,
+            listeners: {
+                scope: this,
+                change: function(cmp, newValue) {
+                    this._update();
+                }
+            }
+        }]);
 
         var ancestorFilterDeferred = Ext.create('Deft.Deferred');
         this.ancestorFilterPlugin = Ext.create('Utils.AncestorPiAppFilter', {
@@ -179,9 +202,9 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _updatePisStore: function() {
-        this.currentPiDataContext = this.getContext().getDataContext();
+        this.currentDataContext = this.getContext().getDataContext();
         if (this.searchAllProjects()) {
-            this.currentPiDataContext.project = null;
+            this.currentDataContext.project = null;
         }
         this.currentPiQueries = this._getPiQueries();
 
@@ -192,7 +215,7 @@ Ext.define("release-tracking-with-filters", {
             filters: this.currentPiQueries,
             enableHierarchy: true,
             remoteSort: true,
-            context: this.currentPiDataContext,
+            context: this.currentDataContext,
             enablePostGet: true,
             enableRootLevelPostGet: true,
             clearOnLoad: false
@@ -209,10 +232,18 @@ Ext.define("release-tracking-with-filters", {
         var queries = [],
             timeboxScope = this.getContext().getTimeboxScope();
 
-        queries.push({
-            property: 'Release',
-            value: this.selectedRelease.get('_ref')
-        });
+        if (this.selectedRelease) {
+            queries.push({
+                property: 'Release',
+                value: this.selectedRelease.get('_ref')
+            });
+        }
+        else {
+            queries.push({
+                property: 'Release',
+                value: null
+            });
+        }
 
         if (timeboxScope && _.any(this.modelNames, timeboxScope.isApplicable, timeboxScope)) {
             queries.push(timeboxScope.getQueryFilter());
@@ -225,14 +256,15 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _updateIterationsStore: function() {
+        var dateRange = this._getDateRange();
         var filter = Rally.data.wsapi.Filter.and([{
             property: 'EndDate',
             operator: '>',
-            value: this.selectedRelease.get('ReleaseStartDate')
+            value: dateRange.startDate
         }, {
             property: 'StartDate',
             operator: '<',
-            value: this.selectedRelease.get('ReleaseDate')
+            value: dateRange.endDate
         }])
         this.iterationsStore = Ext.create('Rally.data.wsapi.Store', {
             model: 'Iteration',
@@ -241,6 +273,22 @@ Ext.define("release-tracking-with-filters", {
             context: this.getContext().getDataContext()
         });
         return this.iterationsStore.load();
+    },
+
+    _getDateRange: function() {
+        if (this.selectedRelease) {
+            return {
+                startDate: this.selectedRelease.get('ReleaseStartDate'),
+                endDate: this.selectedRelease.get('ReleaseDate'),
+            }
+        }
+        else {
+            var today = new Date();
+            return {
+                startDate: this.down('#start-date-picker').getValue() || today.toISOString(),
+                endDate: this.down('#end-date-picker').getValue() || today.toISOString()
+            }
+        }
     },
 
     _getDefects: function() {
@@ -299,7 +347,7 @@ Ext.define("release-tracking-with-filters", {
             gridConfig: {
                 store: store,
                 storeConfig: {
-                    context: this.currentPiDataContext,
+                    context: this.currentDataContext,
                     filters: this.currentPiQueries,
                 },
                 listeners: {
@@ -357,11 +405,19 @@ Ext.define("release-tracking-with-filters", {
         }, this);
 
         var columns = _.map(uniqueIterations, function(iteration) {
+            var startDate = iteration.get('StartDate').toLocaleDateString();
+            var endDate = iteration.get('EndDate').toLocaleDateString();
+            var headerTemplate = new Ext.XTemplate('<div class="iteration-name">{name}</div><div class="iteration-dates">{start} - {end}</dev>').apply({
+                name: iteration.get('Name'),
+                start: startDate,
+                end: endDate
+            });
             return {
                 xtype: 'rallycardboardcolumn',
                 //value: iteration.get('Name'),
                 columnHeaderConfig: {
-                    headerTpl: iteration.get('Name')
+                    headerTpl: headerTemplate,
+                    cls: 'cardboard-column-header'
                 },
                 fields: ['Feature'],
                 additionalFetchFields: Constants.STORIES_FETCH,
@@ -395,7 +451,7 @@ Ext.define("release-tracking-with-filters", {
             },
             fields: ['Feature'],
             additionalFetchFields: Constants.STORIES_FETCH
-        })
+        });
 
         this.board = boardArea.add({
             xtype: 'rallycardboard',
@@ -405,7 +461,8 @@ Ext.define("release-tracking-with-filters", {
             storeConfig: {
                 filters: filter,
                 fetch: 'Feature',
-                groupField: 'Feature'
+                groupField: 'Feature',
+                context: this.currentDataContext
             },
             rowConfig: {
                 field: 'Project'
