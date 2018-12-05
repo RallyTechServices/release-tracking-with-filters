@@ -470,7 +470,51 @@ Ext.define("release-tracking-with-filters", {
             columns: columns,
             cardConfig: {
                 xtype: 'storyfeaturecard',
-                isHiddenFunc: this._isCardHidden.bind(this)
+                isHiddenFunc: this._isCardHidden.bind(this),
+                listeners: {
+                    scope: this,
+                    select: function(card) {
+                        var story = card.getRecord();
+                        var featureRef = story.get(this.lowestPiTypeName);
+                        var feature = this.piStore.getById(featureRef);
+                        var context = this.getContext().getDataContext();
+                        context.project = story.get('Project')._ref;
+                        var iteration = story.get('Iteration');
+                        var filters = [];
+                        if (iteration) {
+                            filters = [{
+                                property: 'Iteration.Name',
+                                value: iteration.Name
+                            }, {
+                                property: 'Iteration.StartDate',
+                                value: iteration.StartDate
+                            }, {
+                                property: 'Iteration.EndDate',
+                                value: iteration.EndDate
+                            }];
+                        }
+                        else {
+                            filters = [{
+                                property: 'Iteration',
+                                value: null
+                            }];
+                        }
+                        Rally.ui.popover.PopoverFactory.bake({
+                            field: 'UserStory',
+                            record: feature,
+                            target: card.getEl(),
+                            context: context,
+                            listViewConfig: {
+                                gridConfig: {
+                                    storeConfig: {
+                                        filters: filters
+                                    },
+                                    columnCfgs: ['FormattedID', 'Name', 'PlanEstimate', 'ScheduleState']
+                                }
+                            }
+                        });
+                    },
+                }
             }
 
         })
