@@ -34,3 +34,17 @@
     margin-left: unset;
     margin-right: unset;
 }
+
+.date-label {
+    font-size: larger;
+    font-weight: bold;
+}
+
+.grid-area {
+    background-color: rgb(244, 244, 244);
+    padding: 10px;
+    border: rgb(213, 213, 213);
+    border-width: thin;
+    border-style: solid;
+    border-radius: 4px
+}

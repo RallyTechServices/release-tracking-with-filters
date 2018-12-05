@@ -3,44 +3,37 @@ Ext.define("release-tracking-with-filters", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     layout: {
-        type: 'vbox',
+        type: 'hbox',
         align: 'stretch'
     },
     items: [{
-        id: 'top-area',
-        xtype: 'container',
-        layout: {
-            type: 'hbox'
-        },
-        items: [{
-            id: 'controls-area',
-            xtype: 'container',
-            layout: {
-                type: 'hbox'
-            }
-        }]
-    }, {
-        id: 'data-area',
+        id: 'grid-area',
         xtype: 'container',
         flex: 1,
-        layout: {
-            type: 'hbox',
-            align: 'stretch'
-        },
+        type: 'vbox',
+        align: 'stretch',
+        cls: 'grid-area'
+    }, {
+        id: 'right-area',
+        xtype: 'container',
+        flex: 2,
+        type: 'vbox',
+        align: 'stretch',
+        overflowX: 'auto',
+        overflowY: 'auto',
+        padding: '0 0 0 20',
         items: [{
-            id: 'grid-area',
+            id: 'date-range-area',
             xtype: 'container',
-            flex: 1,
-            type: 'vbox',
-            align: 'stretch'
+            layout: 'hbox'
         }, {
             id: 'board-area',
             xtype: 'container',
-            flex: 2,
+            flex: 1,
             type: 'vbox',
             align: 'stretch',
             overflowX: 'auto',
-            overflowY: 'auto',
+            overflowY: 'auto'
         }]
     }],
     config: {
@@ -53,11 +46,15 @@ Ext.define("release-tracking-with-filters", {
     },
 
     launch: function() {
-        var controlsArea = this.down('#controls-area');
-        controlsArea.add([{
+        var dateRangeArea = this.down('#date-range-area');
+        dateRangeArea.add([{
             xtype: 'rallydatefield',
             id: 'start-date-picker',
             fieldLabel: Constants.START_DATE,
+            labelWidth: 100,
+            labelCls: 'date-label',
+            //minWidth: 200,
+            margin: '0 10 0 0',
             listeners: {
                 scope: this,
                 change: function(cmp, newValue) {
@@ -69,6 +66,9 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallydatefield',
             id: 'end-date-picker',
             fieldLabel: Constants.END_DATE,
+            labelWidth: 10,
+            labelCls: 'date-label',
+            margin: '0 10 0 0',
             listeners: {
                 scope: this,
                 change: function(cmp, newValue) {
@@ -148,7 +148,8 @@ Ext.define("release-tracking-with-filters", {
     },
 
     setLoading: function(loading) {
-        this.down('#data-area').setLoading(loading);
+        //this.down('#data-area').setLoading(loading);
+        this.callParent(arguments);
     },
 
     // Usual monkey business to size gridboards
@@ -159,9 +160,10 @@ Ext.define("release-tracking-with-filters", {
         if (gridArea && grid) {
             grid.setHeight(gridArea.getHeight())
         }
+        return;
         var boardArea = this.down('#board-area');
         var board = this.down('rallygridboard');
-        if (gridArea && board) {
+        if (boardArea && board) {
             board.setHeight(boardArea.getHeight())
         }
     },
@@ -241,11 +243,11 @@ Ext.define("release-tracking-with-filters", {
     _updateIterationsStore: function() {
         var filter = Rally.data.wsapi.Filter.and([{
             property: 'EndDate',
-            operator: '>',
+            operator: '>=',
             value: this.timeboxStart
         }, {
             property: 'StartDate',
-            operator: '<',
+            operator: '<=',
             value: this.timeboxEnd
         }])
         this.iterationsStore = Ext.create('Rally.data.wsapi.Store', {
@@ -443,7 +445,7 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallycardboard',
             type: ['HierarchicalRequirement'],
             attribute: 'Iteration',
-            height: boardArea.getHeight(),
+            //height: boardArea.getHeight(),
             storeConfig: {
                 filters: filter,
                 fetch: 'Feature',

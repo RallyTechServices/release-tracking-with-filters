@@ -30,7 +30,8 @@
     "watch": [
       "src/*",
       "templates/*",
-      "*.json"
+      "*.json",
+      "src/style/app.css"
     ],
     "verbose": true
   }
