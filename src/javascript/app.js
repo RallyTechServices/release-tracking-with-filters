@@ -229,8 +229,7 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _getPiQueries: function() {
-        var queries = [],
-            timeboxScope = this.getContext().getTimeboxScope();
+        var queries = [];
 
         if (this.selectedRelease) {
             queries.push({
@@ -245,9 +244,6 @@ Ext.define("release-tracking-with-filters", {
             });
         }
 
-        if (timeboxScope && _.any(this.modelNames, timeboxScope.isApplicable, timeboxScope)) {
-            queries.push(timeboxScope.getQueryFilter());
-        }
         var ancestorFilter = this.ancestorFilterPlugin.getFilterForType(this.modelNames[0]);
         if (ancestorFilter) {
             queries.push(ancestorFilter);
