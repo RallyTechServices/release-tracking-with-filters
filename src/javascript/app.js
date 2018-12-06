@@ -7,12 +7,29 @@ Ext.define("release-tracking-with-filters", {
         align: 'stretch'
     },
     items: [{
-        id: 'grid-area',
-        xtype: 'container',
+        id: 'left-area',
+        xtype: 'panel',
+        border: false,
+        bodyBorder: false,
+        header: {
+            cls: 'ts-panel-header'
+        },
+        cls: 'grid-area',
+        title: Constants.PORTFOLIO_ITEMS,
         flex: 1,
-        type: 'vbox',
-        align: 'stretch',
-        cls: 'grid-area'
+        layout: {
+            type: 'vbox',
+            align: 'stretch'
+        },
+        items: [{
+            id: 'grid-area',
+            xtype: 'container',
+            flex: 1,
+            layout: {
+                type: 'vbox',
+                align: 'stretch'
+            },
+        }]
     }, {
         id: 'right-area',
         xtype: 'container',
@@ -158,7 +175,7 @@ Ext.define("release-tracking-with-filters", {
         var gridArea = this.down('#grid-area');
         var grid = this.down('rallygridboard');
         if (gridArea && grid) {
-            grid.setHeight(gridArea.getHeight())
+            grid.setHeight(gridArea.getHeight() - 30)
         }
         return;
         var boardArea = this.down('#board-area');
@@ -276,7 +293,7 @@ Ext.define("release-tracking-with-filters", {
             context: this.getContext(),
             modelNames: this.modelNames,
             toggleState: 'grid',
-            height: gridArea.getHeight(),
+            height: gridArea.getHeight() - 30,
             listeners: {
                 scope: this,
                 viewchange: this.viewChange,
@@ -333,6 +350,12 @@ Ext.define("release-tracking-with-filters", {
                 }
             ],
             gridConfig: {
+                shouldShowRowActionsColumn: false,
+                enableBulkEdit: false,
+                enableEditing: false,
+                enableColumnMove: false,
+                enableInlineAdd: false,
+                enableRanking: true,
                 store: store,
                 storeConfig: {
                     context: this.currentDataContext,

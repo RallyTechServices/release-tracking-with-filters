@@ -13,6 +13,7 @@ Ext.define('TsGridboardProjectScope', {
         return _.merge({
             xtype: 'rallycombobox',
             id: 'ignoreScopeControl',
+            cls: 'ts-scope-control',
             stateful: true,
             stateId: this.cmp.getContext().getScopedStateId('TsGridboardProjectScope'),
             stateEvents: ['select'],

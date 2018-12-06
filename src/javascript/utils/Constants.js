@@ -7,6 +7,7 @@ Ext.define('Constants', {
         RELEASE_CONTROL_LABEL_CLASS: 'ts-page-label',
         UNSCHEDULED: 'Unscheduled',
         START_DATE: 'Iterations from',
-        END_DATE: 'to'
+        END_DATE: 'to',
+        PORTFOLIO_ITEMS: 'Portfolio Items'
     }
 })
