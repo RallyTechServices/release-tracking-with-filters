@@ -48,3 +48,14 @@
     border-style: solid;
     border-radius: 4px
 }
+
+.ts-artifact-color {
+    width: 5px;
+    height: 20px;
+}
+
+.ts-card-table div {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #666;
+}
