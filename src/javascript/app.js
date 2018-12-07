@@ -130,43 +130,28 @@ Ext.define("release-tracking-with-filters", {
     _update: function() {
         this.setLoading(true);
 
-        var iterationsPromise = this._updateIterationsStore().then({
+        return this._updateIterationsStore().then({
             scope: this,
             success: function(iterations) {
                 this.currentIterations = iterations;
+                return this._updatePisStore();
             },
-        });
-
-        var pisPromise = this._updatePisStore().then({
+        }).then({
             scope: this,
             success: function(pis) {
                 this._addPisGrid(this.piStore);
-                var queries = _.map(pis, function(pi) {
-                    return {
-                        property: this.lowestPiTypeName,
-                        operator: '=',
-                        value: pi.get('_ref')
-                    }
-                }, this);
-                // If there are no PIs, then explicitly filter out all stories
-                this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
-                    property: 'ObjectID',
-                    value: 0
-                }];
-            }
-        });
-
-        Deft.promise.Promise.all([iterationsPromise, pisPromise]).then({
-            scope: this,
-            success: function() {
-                return this._addPisBoard(this.storiesFilter, this.currentIterations);
             }
         });
     },
 
     setLoading: function(loading) {
-        //this.down('#data-area').setLoading(loading);
-        this.callParent(arguments);
+        this.down('#board-area').setLoading(loading);
+        if (this.grid) {
+            var treegrid = this.grid.down('rallytreegrid');
+            if (treegrid) {
+                treegrid.setLoading(loading);
+            }
+        }
     },
 
     // Usual monkey business to size gridboards
@@ -202,12 +187,14 @@ Ext.define("release-tracking-with-filters", {
             context: this.currentDataContext,
             enablePostGet: true,
             enableRootLevelPostGet: true,
-            clearOnLoad: false
+            clearOnLoad: false,
+            limit: 10,
+            pageSize: 10
         }).then({
             scope: this,
             success: function(store) {
                 this.piStore = store;
-                return this.piStore.load();
+                //return this.piStore.load();
             }
         });
     },
@@ -297,6 +284,9 @@ Ext.define("release-tracking-with-filters", {
             listeners: {
                 scope: this,
                 viewchange: this.viewChange,
+                load: function(grid) {
+                    this._onGridLoad(grid);
+                }
             },
             plugins: [{
                     ptype: 'rallygridboardinlinefiltercontrol',
@@ -360,6 +350,8 @@ Ext.define("release-tracking-with-filters", {
                 storeConfig: {
                     context: this.currentDataContext,
                     filters: this.currentPiQueries,
+                    limit: 10,
+                    pageSize: 10
                 },
                 listeners: {
                     scope: this,
@@ -372,7 +364,31 @@ Ext.define("release-tracking-with-filters", {
                 }
             }
         });
-        this.setLoading(false);
+    },
+
+    _onGridLoad: function(grid) {
+        var store = grid.getGridOrBoard().getStore();
+        var root = store.getRootNode();
+        var queries = _.map(root.childNodes, function(pi) {
+            return {
+                property: this.lowestPiTypeName,
+                operator: '=',
+                value: pi.get('_ref')
+            }
+        }, this);
+        // If there are no PIs, then explicitly filter out all stories
+        this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
+            property: 'ObjectID',
+            value: 0
+        }];
+
+        var boardPromise = this._addPisBoard(this.storiesFilter, this.currentIterations).then({
+            scope: this,
+            success: function() {
+                this.setLoading(false);
+            }
+        });
+        return boardPromise;
     },
 
     _onPiSelected: function(pi) {
@@ -399,6 +415,7 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _addPisBoard: function(filter, iterations) {
+        var boardDeferred = Ext.create('Deft.Deferred');
         var boardArea = this.down('#board-area')
         boardArea.removeAll();
 
@@ -475,6 +492,12 @@ Ext.define("release-tracking-with-filters", {
                 groupField: 'Feature',
                 context: this.currentDataContext
             },
+            listeners: {
+                scope: this,
+                boxready: function() {
+                    boardDeferred.resolve()
+                }
+            },
             rowConfig: {
                 field: 'Project'
             },
@@ -527,8 +550,8 @@ Ext.define("release-tracking-with-filters", {
                     },
                 }
             }
-
-        })
+        });
+        return boardDeferred.promise;
     },
 
     _getCardBucketKey: function(card) {
