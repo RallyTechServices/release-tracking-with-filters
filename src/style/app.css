@@ -34,3 +34,41 @@
     margin-left: unset;
     margin-right: unset;
 }
+
+.date-label {
+    font-size: larger;
+    font-weight: bold;
+}
+
+.grid-area {
+    background-color: rgb(244, 244, 244);
+    padding: 15px;
+    border: rgb(213, 213, 213);
+    border-width: thin;
+    border-style: solid;
+    border-radius: 4px;
+}
+
+.ts-panel-header {
+    background-color: rgb(244, 244, 244);
+}
+
+.ts-panel-header .x-panel-header-text {
+    font-weight: bold;
+}
+
+.ts-artifact-color {
+    width: 5px;
+    height: 20px;
+}
+
+.ts-card-table div {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #666;
+}
+
+.ts-scope-control {
+    margin-top: 3px;
+    margin-right: 9px;
+}

@@ -3,36 +3,50 @@ Ext.define("release-tracking-with-filters", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     layout: {
-        type: 'vbox',
+        type: 'hbox',
         align: 'stretch'
     },
     items: [{
-        id: 'controls-area',
-        xtype: 'container',
-        layout: {
-            type: 'hbox'
-        }
-    }, {
-        id: Utils.AncestorPiAppFilter.RENDER_AREA_ID,
-        xtype: 'container',
-    }, {
-        id: 'data-area',
-        xtype: 'container',
+        id: 'left-area',
+        xtype: 'panel',
+        border: false,
+        bodyBorder: false,
+        header: {
+            cls: 'ts-panel-header'
+        },
+        cls: 'grid-area',
+        title: Constants.PORTFOLIO_ITEMS,
         flex: 1,
         layout: {
-            type: 'hbox',
+            type: 'vbox',
             align: 'stretch'
         },
         items: [{
             id: 'grid-area',
             xtype: 'container',
             flex: 1,
-            type: 'vbox',
-            align: 'stretch'
+            layout: {
+                type: 'vbox',
+                align: 'stretch'
+            },
+        }]
+    }, {
+        id: 'right-area',
+        xtype: 'container',
+        flex: 2,
+        type: 'vbox',
+        align: 'stretch',
+        overflowX: 'auto',
+        overflowY: 'auto',
+        padding: '0 0 0 20',
+        items: [{
+            id: 'date-range-area',
+            xtype: 'container',
+            layout: 'hbox'
         }, {
             id: 'board-area',
             xtype: 'container',
-            flex: 2,
+            flex: 1,
             type: 'vbox',
             align: 'stretch',
             overflowX: 'auto',
@@ -40,7 +54,8 @@ Ext.define("release-tracking-with-filters", {
         }]
     }],
     config: {
-        defaultSettings: {}
+        defaultSettings: {},
+        ignoreProjectScope: false
     },
 
     integrationHeaders: {
@@ -48,38 +63,19 @@ Ext.define("release-tracking-with-filters", {
     },
 
     launch: function() {
-
-        // TODO (tj) Add ancestor filter
-
-        var releasePickerDeferred = Ext.create('Deft.Deferred');
-        var controlsArea = this.down('#controls-area');
-        controlsArea.add({
-            xtype: 'rallyreleasecombobox',
-            id: 'release-picker',
-            allowNoEntry: true,
-            fieldLabel: Constants.RELEASE_CONTROL_LABEL,
-            labelCls: Constants.RELEASE_CONTROL_LABEL_CLASS,
-            valueField: '_ref',
-            labelWidth: 150,
-            width: 500,
-            stateful: true,
-            stateId: Rally.getApp().getContext().getScopedStateId('release-picker'),
-            listeners: {
-                scope: this,
-                select: this._onReleaseSelect,
-                ready: function(cmp) {
-                    this.selectedRelease = cmp.getRecord();
-                    releasePickerDeferred.resolve();
-                }
-            }
-        });
-        controlsArea.add([{
+        var dateRangeArea = this.down('#date-range-area');
+        dateRangeArea.add([{
             xtype: 'rallydatefield',
             id: 'start-date-picker',
             fieldLabel: Constants.START_DATE,
+            labelWidth: 100,
+            labelCls: 'date-label',
+            //minWidth: 200,
+            margin: '0 10 0 0',
             listeners: {
                 scope: this,
                 change: function(cmp, newValue) {
+                    this.timeboxStart = newValue;
                     this._update();
                 }
             }
@@ -87,49 +83,40 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallydatefield',
             id: 'end-date-picker',
             fieldLabel: Constants.END_DATE,
+            labelWidth: 10,
+            labelCls: 'date-label',
+            margin: '0 10 0 0',
             listeners: {
                 scope: this,
                 change: function(cmp, newValue) {
+                    this.timeboxEnd = newValue;
                     this._update();
                 }
             }
         }]);
 
-        var ancestorFilterDeferred = Ext.create('Deft.Deferred');
-        this.ancestorFilterPlugin = Ext.create('Utils.AncestorPiAppFilter', {
-            ptype: 'UtilsAncestorPiAppFilter',
-            pluginId: 'ancestorFilterPlugin',
-            publisher: false, // Publish events to other apps using this plugin
-            settingsConfig: {
-                labelWidth: 150,
-                margin: 10
-            },
-            listeners: {
-                scope: this,
-                ready: function(plugin) {
-                    // Plugin ready, begin listening for selection changes
-                    plugin.addListener({
-                        scope: this,
-                        select: this._update
-                    });
-                    ancestorFilterDeferred.resolve();
-                },
-            }
-        });
-        // Must add the filter at runtime (instead of in config) to make sure we can
-        // catch its ready event.
-        this.addPlugin(this.ancestorFilterPlugin);
+        var timeboxScope = this.getContext().getTimeboxScope();
+        this._onTimeboxScopeChange(timeboxScope);
 
-        var promises = [releasePickerDeferred.promise, ancestorFilterDeferred.promise];
+        var promises = [];
 
         // Get lowest PI type.
         promises.push(Rally.data.util.PortfolioItemHelper.getPortfolioItemTypes().then({
             scope: this,
             success: function(records) {
-                this.lowestPi = records[0];
+                this.portfolioItemTypes = records;
+                this.lowestPi = this.portfolioItemTypes[0];
                 this.lowestPiTypePath = this.lowestPi.get('TypePath');
                 this.lowestPiTypeName = this.lowestPi.get('Name');
                 this.modelNames = [this.lowestPiTypePath];
+                return Rally.data.wsapi.ModelFactory.getModel({
+                    type: this.lowestPiTypePath
+                });
+            }
+        }).then({
+            scope: this,
+            success: function(model) {
+                this.lowestPiModel = model;
             }
         }));
 
@@ -143,47 +130,28 @@ Ext.define("release-tracking-with-filters", {
     _update: function() {
         this.setLoading(true);
 
-        var iterationsPromise = this._updateIterationsStore().then({
+        return this._updateIterationsStore().then({
             scope: this,
             success: function(iterations) {
                 this.currentIterations = iterations;
+                return this._updatePisStore();
             },
-        });
-
-        var pisPromise = this._updatePisStore().then({
+        }).then({
             scope: this,
             success: function(pis) {
                 this._addPisGrid(this.piStore);
-                var queries = _.map(pis, function(pi) {
-                    return {
-                        property: this.lowestPiTypeName,
-                        operator: '=',
-                        value: pi.get('_ref')
-                    }
-                }, this);
-                // If there are no PIs, then explicitly filter out all stories
-                this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
-                    property: 'ObjectID',
-                    value: 0
-                }];
-            }
-        });
-
-        Deft.promise.Promise.all([iterationsPromise, pisPromise]).then({
-            scope: this,
-            success: function() {
-                return this._addPisBoard(this.storiesFilter, this.currentIterations);
             }
         });
     },
 
     setLoading: function(loading) {
-        this.down('#data-area').setLoading(loading);
-    },
-
-    _onReleaseSelect: function(cmp) {
-        this.selectedRelease = cmp.getRecord();
-        this._update();
+        this.down('#board-area').setLoading(loading);
+        if (this.grid) {
+            var treegrid = this.grid.down('rallytreegrid');
+            if (treegrid) {
+                treegrid.setLoading(loading);
+            }
+        }
     },
 
     // Usual monkey business to size gridboards
@@ -192,11 +160,12 @@ Ext.define("release-tracking-with-filters", {
         var gridArea = this.down('#grid-area');
         var grid = this.down('rallygridboard');
         if (gridArea && grid) {
-            grid.setHeight(gridArea.getHeight())
+            grid.setHeight(gridArea.getHeight() - 30)
         }
+        return;
         var boardArea = this.down('#board-area');
         var board = this.down('rallygridboard');
-        if (gridArea && board) {
+        if (boardArea && board) {
             board.setHeight(boardArea.getHeight())
         }
     },
@@ -218,12 +187,14 @@ Ext.define("release-tracking-with-filters", {
             context: this.currentDataContext,
             enablePostGet: true,
             enableRootLevelPostGet: true,
-            clearOnLoad: false
+            clearOnLoad: false,
+            limit: 10,
+            pageSize: 10
         }).then({
             scope: this,
             success: function(store) {
                 this.piStore = store;
-                return this.piStore.load();
+                //return this.piStore.load();
             }
         });
     },
@@ -231,36 +202,57 @@ Ext.define("release-tracking-with-filters", {
     _getPiQueries: function() {
         var queries = [];
 
-        if (this.selectedRelease) {
-            queries.push({
-                property: 'Release',
-                value: this.selectedRelease.get('_ref')
-            });
-        }
-        else {
-            queries.push({
-                property: 'Release',
-                value: null
-            });
+        switch (this.timeboxType) {
+            case 'release':
+                queries.push({
+                    property: 'Release',
+                    value: this.timebox ? this.timebox.get('_ref') : null
+                });
+                break;
+            case 'iteration':
+                if (this.timebox) {
+                    queries.push({
+                        property: 'UserStories.Iteration.Name',
+                        value: this.timebox.get('Name')
+                    });
+                    queries.push({
+                        property: 'UserStories.Iteration.StartDate',
+                        value: this.timebox.get('StartDate')
+                    });
+                    queries.push({
+                        property: 'UserStories.Iteration.EndDate',
+                        value: this.timebox.get('EndDate')
+                    });
+                }
+                else {
+                    queries.push({
+                        property: 'UserStories.Iteration',
+                        value: null
+                    });
+                }
+                break;
+            case 'milestone':
+                queries.push({
+                    property: 'Milestones.ObjectID',
+                    value: this.timebox ? this.timebox.get('ObjectID') : null
+                });
+                break;
+            default:
+                break;
         }
 
-        var ancestorFilter = this.ancestorFilterPlugin.getFilterForType(this.modelNames[0]);
-        if (ancestorFilter) {
-            queries.push(ancestorFilter);
-        }
         return queries;
     },
 
     _updateIterationsStore: function() {
-        var dateRange = this._getDateRange();
         var filter = Rally.data.wsapi.Filter.and([{
             property: 'EndDate',
-            operator: '>',
-            value: dateRange.startDate
+            operator: '>=',
+            value: this.timeboxStart
         }, {
             property: 'StartDate',
-            operator: '<',
-            value: dateRange.endDate
+            operator: '<=',
+            value: this.timeboxEnd
         }])
         this.iterationsStore = Ext.create('Rally.data.wsapi.Store', {
             model: 'Iteration',
@@ -269,22 +261,6 @@ Ext.define("release-tracking-with-filters", {
             context: this.getContext().getDataContext()
         });
         return this.iterationsStore.load();
-    },
-
-    _getDateRange: function() {
-        if (this.selectedRelease) {
-            return {
-                startDate: this.selectedRelease.get('ReleaseStartDate'),
-                endDate: this.selectedRelease.get('ReleaseDate'),
-            }
-        }
-        else {
-            var today = new Date();
-            return {
-                startDate: this.down('#start-date-picker').getValue() || today.toISOString(),
-                endDate: this.down('#end-date-picker').getValue() || today.toISOString()
-            }
-        }
     },
 
     _getDefects: function() {
@@ -297,16 +273,20 @@ Ext.define("release-tracking-with-filters", {
             gridArea.removeAll();
         }
         var currentModelName = this.modelNames[0];
-
+        var allProjectsContext = this.getContext().getDataContext();
+        allProjectsContext.project = null;
         this.grid = gridArea.add({
             xtype: 'rallygridboard',
             context: this.getContext(),
             modelNames: this.modelNames,
             toggleState: 'grid',
-            height: gridArea.getHeight(),
+            height: gridArea.getHeight() - 30,
             listeners: {
                 scope: this,
                 viewchange: this.viewChange,
+                load: function(grid) {
+                    this._onGridLoad(grid);
+                }
             },
             plugins: [{
                     ptype: 'rallygridboardinlinefiltercontrol',
@@ -316,6 +296,9 @@ Ext.define("release-tracking-with-filters", {
                         modelNames: this.modelNames,
                         inlineFilterPanelConfig: {
                             quickFilterPanelConfig: {
+                                context: allProjectsContext,
+                                portfolioItemTypes: this.portfolioItemTypes,
+                                modelName: this.lowestPiTypePath,
                                 whiteListFields: [
                                     'Tags',
                                     'Milestones'
@@ -332,6 +315,22 @@ Ext.define("release-tracking-with-filters", {
                     stateId: this.getModelScopedStateId(currentModelName, 'fields'),
                 },
                 {
+                    ptype: 'tsgridboardprojectscope',
+                    headerPosition: 'left',
+                    stateful: true,
+                    stateId: this.getModelScopedStateId(currentModelName, 'fields'),
+                    controlConfig: {
+                        value: this.ignoreProjectScope,
+                        listeners: {
+                            scope: this,
+                            select: function(cmp, newValue) {
+                                this.ignoreProjectScope = cmp.getValue();
+                                this._update()
+                            }
+                        }
+                    }
+                },
+                {
                     ptype: 'rallygridboardsharedviewcontrol',
                     sharedViewConfig: {
                         stateful: true,
@@ -341,10 +340,18 @@ Ext.define("release-tracking-with-filters", {
                 }
             ],
             gridConfig: {
+                shouldShowRowActionsColumn: false,
+                enableBulkEdit: false,
+                enableEditing: false,
+                enableColumnMove: false,
+                enableInlineAdd: false,
+                enableRanking: true,
                 store: store,
                 storeConfig: {
                     context: this.currentDataContext,
                     filters: this.currentPiQueries,
+                    limit: 10,
+                    pageSize: 10
                 },
                 listeners: {
                     scope: this,
@@ -357,7 +364,31 @@ Ext.define("release-tracking-with-filters", {
                 }
             }
         });
-        this.setLoading(false);
+    },
+
+    _onGridLoad: function(grid) {
+        var store = grid.getGridOrBoard().getStore();
+        var root = store.getRootNode();
+        var queries = _.map(root.childNodes, function(pi) {
+            return {
+                property: this.lowestPiTypeName,
+                operator: '=',
+                value: pi.get('_ref')
+            }
+        }, this);
+        // If there are no PIs, then explicitly filter out all stories
+        this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
+            property: 'ObjectID',
+            value: 0
+        }];
+
+        var boardPromise = this._addPisBoard(this.storiesFilter, this.currentIterations).then({
+            scope: this,
+            success: function() {
+                this.setLoading(false);
+            }
+        });
+        return boardPromise;
     },
 
     _onPiSelected: function(pi) {
@@ -384,6 +415,7 @@ Ext.define("release-tracking-with-filters", {
     },
 
     _addPisBoard: function(filter, iterations) {
+        var boardDeferred = Ext.create('Deft.Deferred');
         var boardArea = this.down('#board-area')
         boardArea.removeAll();
 
@@ -453,12 +485,18 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallycardboard',
             type: ['HierarchicalRequirement'],
             attribute: 'Iteration',
-            height: boardArea.getHeight(),
+            //height: boardArea.getHeight(),
             storeConfig: {
                 filters: filter,
                 fetch: 'Feature',
                 groupField: 'Feature',
                 context: this.currentDataContext
+            },
+            listeners: {
+                scope: this,
+                boxready: function() {
+                    boardDeferred.resolve()
+                }
             },
             rowConfig: {
                 field: 'Project'
@@ -505,15 +543,15 @@ Ext.define("release-tracking-with-filters", {
                                     storeConfig: {
                                         filters: filters
                                     },
-                                    columnCfgs: ['FormattedID', 'Name', 'PlanEstimate', 'ScheduleState']
+                                    columnCfgs: Constants.STORY_COLUMNS,
                                 }
                             }
                         });
                     },
                 }
             }
-
-        })
+        });
+        return boardDeferred.promise;
     },
 
     _getCardBucketKey: function(card) {
@@ -586,6 +624,48 @@ Ext.define("release-tracking-with-filters", {
     },
 
     searchAllProjects: function() {
-        return this.ancestorFilterPlugin.getIgnoreProjectScope();
+        return this.ignoreProjectScope;
     },
+
+    onTimeboxScopeChange: function(newTimeboxScope) {
+        this.callParent(arguments);
+        this._onTimeboxScopeChange(newTimeboxScope);
+        this._update();
+    },
+
+    _onTimeboxScopeChange: function(timeboxScope) {
+        if (timeboxScope) {
+            this.timeboxType = timeboxScope.getType();
+            this.timebox = timeboxScope.getRecord();
+            if (this.timeboxType == 'release') {
+                this.timeboxStart = this.timebox ? this.timebox.get('ReleaseStartDate') : new Date();
+                this.timeboxEnd = this.timebox ? this.timebox.get('ReleaseDate') : new Date();
+            }
+            else if (this.timeboxType == 'milestone') {
+                this.timeboxStart = this.timebox ? this.timebox.get('TargetDate') : new Date();
+                this.timeboxEnd = this.timebox ? this.timebox.get('TargetDate') : new Date();
+            }
+            else if (this.timeboxType == 'iteration') {
+                this.timeboxStart = this.timebox ? this.timebox.get('StartDate') : new Date();
+                this.timeboxEnd = this.timebox ? this.timebox.get('EndDate') : new Date();
+            }
+        }
+        else {
+            this.timeboxStart = new Date();
+            this.timeboxEnd = new Date();
+        }
+
+        this._updateDateControls();
+    },
+
+    _updateDateControls: function() {
+        var startDatePicker = this.down('#start-date-picker');
+        startDatePicker.suspendEvents();
+        startDatePicker.setValue(this.timeboxStart);
+        startDatePicker.resumeEvents();
+        var endDatePicker = this.down('#end-date-picker');
+        endDatePicker.suspendEvents();
+        endDatePicker.setValue(this.timeboxEnd);
+        endDatePicker.resumeEvents();
+    }
 });
