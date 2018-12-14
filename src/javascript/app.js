@@ -12,7 +12,8 @@ Ext.define("release-tracking-with-filters", {
         border: false,
         bodyBorder: false,
         header: {
-            cls: 'ts-panel-header'
+            cls: 'ts-panel-header',
+            padding: '0 0 15 0'
         },
         cls: 'grid-area',
         title: Constants.PORTFOLIO_ITEMS,
@@ -42,7 +43,8 @@ Ext.define("release-tracking-with-filters", {
         items: [{
             id: 'date-range-area',
             xtype: 'container',
-            layout: 'hbox'
+            layout: 'hbox',
+            padding: '15 0 15 20',
         }, {
             id: 'board-area',
             xtype: 'container',
@@ -55,7 +57,6 @@ Ext.define("release-tracking-with-filters", {
     }],
     config: {
         defaultSettings: {},
-        ignoreProjectScope: false
     },
 
     integrationHeaders: {
@@ -68,7 +69,7 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallydatefield',
             id: 'start-date-picker',
             fieldLabel: Constants.START_DATE,
-            labelWidth: 100,
+            labelWidth: 120,
             labelCls: 'date-label',
             //minWidth: 200,
             margin: '0 10 0 0',
@@ -83,7 +84,7 @@ Ext.define("release-tracking-with-filters", {
             xtype: 'rallydatefield',
             id: 'end-date-picker',
             fieldLabel: Constants.END_DATE,
-            labelWidth: 10,
+            labelWidth: 30,
             labelCls: 'date-label',
             margin: '0 10 0 0',
             listeners: {
@@ -130,7 +131,16 @@ Ext.define("release-tracking-with-filters", {
     _update: function() {
         this.setLoading(true);
 
-        return this._updateIterationsStore().then({
+        // Something about the grid cleanup process clears plugin listeners.
+        // Recreate the plugin on every update. It must be created before the
+        // grid so we can use its value to build the data store.
+        return this._createScopePlugin().then({
+            scope: this,
+            success: function(plugin) {
+                this.scopeControlPlugin = plugin;
+                return this._updateIterationsStore()
+            }
+        }).then({
             scope: this,
             success: function(iterations) {
                 this.currentIterations = iterations;
@@ -142,6 +152,26 @@ Ext.define("release-tracking-with-filters", {
                 this._addPisGrid(this.piStore);
             }
         });
+    },
+
+    _createScopePlugin: function() {
+        var deferred = Ext.create('Deft.Deferred')
+        Ext.create('TsGridboardProjectScope', {
+            ptype: 'tsgridboardprojectscope',
+            headerPosition: 'left',
+            stateful: true,
+            stateId: this.getModelScopedStateId('project', 'scope'),
+            listeners: {
+                scope: this,
+                ready: function(plugin) {
+                    deferred.resolve(plugin);
+                },
+                select: function(newValue) {
+                    this._update()
+                }
+            }
+        });
+        return deferred.promise;
     },
 
     setLoading: function(loading) {
@@ -187,9 +217,7 @@ Ext.define("release-tracking-with-filters", {
             context: this.currentDataContext,
             enablePostGet: true,
             enableRootLevelPostGet: true,
-            clearOnLoad: false,
-            limit: 10,
-            pageSize: 10
+            clearOnLoad: false
         }).then({
             scope: this,
             success: function(store) {
@@ -283,7 +311,7 @@ Ext.define("release-tracking-with-filters", {
             height: gridArea.getHeight() - 30,
             listeners: {
                 scope: this,
-                viewchange: this.viewChange,
+                viewchange: this._update,
                 load: function(grid) {
                     this._onGridLoad(grid);
                 }
@@ -314,22 +342,7 @@ Ext.define("release-tracking-with-filters", {
                     stateful: true,
                     stateId: this.getModelScopedStateId(currentModelName, 'fields'),
                 },
-                {
-                    ptype: 'tsgridboardprojectscope',
-                    headerPosition: 'left',
-                    stateful: true,
-                    stateId: this.getModelScopedStateId(currentModelName, 'fields'),
-                    controlConfig: {
-                        value: this.ignoreProjectScope,
-                        listeners: {
-                            scope: this,
-                            select: function(cmp, newValue) {
-                                this.ignoreProjectScope = cmp.getValue();
-                                this._update()
-                            }
-                        }
-                    }
-                },
+                this.scopeControlPlugin,
                 {
                     ptype: 'rallygridboardsharedviewcontrol',
                     sharedViewConfig: {
@@ -349,9 +362,7 @@ Ext.define("release-tracking-with-filters", {
                 store: store,
                 storeConfig: {
                     context: this.currentDataContext,
-                    filters: this.currentPiQueries,
-                    limit: 10,
-                    pageSize: 10
+                    filters: this.currentPiQueries
                 },
                 listeners: {
                     scope: this,
@@ -624,7 +635,7 @@ Ext.define("release-tracking-with-filters", {
     },
 
     searchAllProjects: function() {
-        return this.ignoreProjectScope;
+        return this.scopeControlPlugin.getValue()
     },
 
     onTimeboxScopeChange: function(newTimeboxScope) {

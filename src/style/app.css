@@ -36,8 +36,10 @@
 }
 
 .date-label {
-    font-size: larger;
+    font-size: 13px;
     font-weight: bold;
+    font-family: ProximaNova, Helvetica, Arial;
+    text-transform: uppercase;
 }
 
 .grid-area {
