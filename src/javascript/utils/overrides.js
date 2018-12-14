@@ -24,3 +24,14 @@ Ext.override(Rally.ui.inlinefilter.PropertyFieldComboBox, {
      */
     defaultWhiteListFields: ['Milestones', 'Tags']
 });
+
+/**
+ * Remove the buffer when responding to 'viewstatesave' events
+ */
+Ext.override(Rally.ui.gridboard.SharedViewComboBox, {
+    initComponent: function() {
+        this.callParent(arguments);
+        this.cmp.un('viewstatesave', this._onCmpViewStateSave, this);
+        this.cmp.on('viewstatesave', this._onCmpViewStateSave, this);
+    },
+});

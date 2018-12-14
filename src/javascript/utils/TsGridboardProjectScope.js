@@ -44,7 +44,7 @@ Ext.define('TsGridboardProjectScope', {
                 change: function(combobox, newValue) {
                     this.value = newValue
                     this.saveState(); // Force a state save before callers notified
-                    this.cmp.fireEvent('viewstatesave', this);
+                    this.cmp.fireEvent('viewstatesave', this); // This gets buffered
                     this.fireEvent('select', newValue);
                 },
             },
