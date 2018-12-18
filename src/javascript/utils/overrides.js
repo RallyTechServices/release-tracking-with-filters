@@ -35,3 +35,14 @@ Ext.override(Rally.ui.gridboard.SharedViewComboBox, {
         this.cmp.on('viewstatesave', this._onCmpViewStateSave, this);
     },
 });
+
+Ext.override(Rally.ui.cardboard.plugin.CardPopover, {
+    showFeaturePredecessorsAndSuccessors: function() {
+        return this._createPopover({
+            field: 'PredecessorsAndSuccessors',
+            record: this.card.getFeature(this.card),
+            offsetFromTarget: [{ x: 0, y: -8 }, { x: 15, y: 0 }, { x: 5, y: 15 }, { x: -15, y: 0 }],
+            target: this.card.getEl().down('.field-content.FeaturePredecessorsAndSuccessors')
+        });
+    },
+});

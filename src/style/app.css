@@ -74,3 +74,20 @@
     margin-top: 3px;
     margin-right: 9px;
 }
+
+.line {
+    z-index: 10000;
+    border-bottom-width: 2px;
+    border-color: #000000;
+    border-bottom-style: solid;
+}
+
+.line.predecessor {
+    border-color: #FF0000;
+    border-bottom-style: solid;
+}
+
+.line.successor {
+    border-color: #00FF00;
+    border-bottom-style: dashed;
+}

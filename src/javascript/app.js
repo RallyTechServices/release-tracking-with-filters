@@ -39,7 +39,7 @@ Ext.define("release-tracking-with-filters", {
         align: 'stretch',
         overflowX: 'auto',
         overflowY: 'auto',
-        padding: '0 0 0 20',
+        //padding: '0 0 0 20',
         items: [{
             id: 'date-range-area',
             xtype: 'container',
@@ -51,8 +51,9 @@ Ext.define("release-tracking-with-filters", {
             flex: 1,
             type: 'vbox',
             align: 'stretch',
-            overflowX: 'auto',
-            overflowY: 'auto'
+            //overflowX: 'auto',
+            //overflowY: 'auto',
+            margin: '0 0 0 20'
         }]
     }],
     config: {
@@ -458,7 +459,7 @@ Ext.define("release-tracking-with-filters", {
                     headerTpl: headerTemplate,
                     cls: 'cardboard-column-header'
                 },
-                fields: ['Feature'],
+                fields: [this.lowestPiTypeName],
                 additionalFetchFields: Constants.STORIES_FETCH,
                 getStoreFilter: function() {
                     // Don't return this column 'value' as a filter
@@ -488,7 +489,7 @@ Ext.define("release-tracking-with-filters", {
             columnHeaderConfig: {
                 headerTpl: Constants.UNSCHEDULED
             },
-            fields: ['Feature'],
+            fields: [this.lowestPiTypeName],
             additionalFetchFields: Constants.STORIES_FETCH
         });
 
@@ -499,8 +500,8 @@ Ext.define("release-tracking-with-filters", {
             //height: boardArea.getHeight(),
             storeConfig: {
                 filters: filter,
-                fetch: 'Feature',
-                groupField: 'Feature',
+                fetch: [this.lowestPiTypeName].concat(Constants.STORIES_FETCH),
+                groupField: this.lowestPiTypeName,
                 context: this.currentDataContext
             },
             listeners: {
@@ -515,10 +516,23 @@ Ext.define("release-tracking-with-filters", {
             columns: columns,
             cardConfig: {
                 xtype: 'storyfeaturecard',
+                lowestPiTypeName: this.lowestPiTypeName,
                 isHiddenFunc: this._isCardHidden.bind(this),
+                getFeature: function(card) {
+                    var story = card.getRecord();
+                    var featureRef = story.get(this.lowestPiTypeName);
+                    var feature = this.piStore.getById(featureRef);
+                    return feature
+                }.bind(this),
                 listeners: {
                     scope: this,
-                    select: function(card) {
+                    fieldclick: function(fieldName, card) {
+                        if (fieldName == 'StoryPredecessorsAndSuccessors') {
+                            this.doAmazing(card);
+                        }
+                    },
+                    story: function(card) {
+                        // TODO (tj) move into StoryFeatureCard
                         var story = card.getRecord();
                         var featureRef = story.get(this.lowestPiTypeName);
                         var feature = this.piStore.getById(featureRef);
@@ -565,9 +579,189 @@ Ext.define("release-tracking-with-filters", {
         return boardDeferred.promise;
     },
 
+    doAmazing: function(clickedCard) {
+        var clickedCardX = clickedCard.getX();
+        var clickedCardY = clickedCard.getY();
+        var cardWidth = clickedCard.getWidth();
+        var cardHeight = clickedCard.getHeight();
+        var successorPointOffset = {
+            x: cardWidth, // right edge
+            y: cardHeight / 2 // middle
+        }
+        var predecessorPointOffset = {
+            x: 0, // left edge
+            y: cardHeight / 2 // middle
+        }
+
+        var boardArea = this.down('#board-area');
+        if (this.drawComponent) {
+            boardArea.remove(this.drawComponent);
+        }
+        //var boardEl = this.board.getEl();
+
+        // TODO (tj) Clean up need to get scroll from right-area. Would be better from board-area
+        var rightAreaEl = this.down('#right-area').getEl();
+        var rightAreaScroll = rightAreaEl.getScroll();
+
+
+        var items = [];
+
+        var xOffset = -boardArea.getX() + boardArea.getEl().getMargin().left;
+        var yOffset = 0 + rightAreaScroll.top //-boardArea.getY() - boardArea.getEl().getMargin().top;
+        /*
+        var xOffset = 0 //-boardArea.getEl().getMargin().left;
+        var yOffset = 0 //-boardArea.getEl().getMargin().top;
+        */
+        // Get list of all cards for this card (1 for each story for this feature + iteration + project)
+        var cards = this._getCardsForCard(clickedCard);
+
+        // For each card, get its story dependencies
+        var promises = _.map(cards, function(item) {
+            var story = item.getRecord();
+            var predecessorsPromise = story.getCollection('Predecessors', {
+                fetch: [this.lowestPiTypeName].concat(Constants.STORIES_FETCH),
+            }).load().then({
+                scope: this,
+                success: function(predecessors) {
+                    // Draw a line to the card representing this stories feature card
+                    _.each(predecessors, function(p) {
+                        var key = this._getRecordBucketKey(p);
+                        if (this.buckets.hasOwnProperty(key)) {
+                            var visibleCard = this.buckets[key][0];
+                            // Skip self-dependencies
+                            if (visibleCard == clickedCard) {
+                                return;
+                            }
+                            var visibleCardXy = visibleCard.getXY();
+                            /*
+                            var line = Lines.createLine(clickedCardX + xOffset, clickedCardY + yOffset, visibleCardXy[0] + xOffset, visibleCardXy[1] + yOffset, {
+                                class: "line predecessor",
+                            });
+                            boardEl.insertFirst(line);
+                            */
+
+                            var p = { x: clickedCardX, y: clickedCardY };
+                            var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
+                            items.push({
+                                type: "circle",
+                                fill: 'red',
+                                radius: 5,
+                                x: p.x + xOffset + predecessorPointOffset.x,
+                                y: p.y + yOffset + predecessorPointOffset.y
+
+                            });
+                            items.push({
+                                type: "circle",
+                                fill: 'red',
+                                radius: 5,
+                                x: p2.x + xOffset + successorPointOffset.x,
+                                y: p2.y + yOffset + successorPointOffset.y
+
+                            });
+                            items.push({
+                                type: "path",
+                                path: Ext.String.format("M{0} {1} L {2} {3}",
+                                    p.x + xOffset + predecessorPointOffset.x,
+                                    p.y + yOffset + predecessorPointOffset.y,
+                                    p2.x + xOffset + successorPointOffset.x,
+                                    p2.y + yOffset + successorPointOffset.y
+                                ),
+                                fill: "transparent",
+                                stroke: "red",
+                                "stroke-width": "1"
+                            });
+                        };
+                    }, this);
+                }
+            });
+            var successorsPromise = story.getCollection('Successors', {
+                fetch: [this.lowestPiTypeName].concat(Constants.STORIES_FETCH),
+            }).load().then({
+                scope: this,
+                success: function(successors) {
+                    _.each(successors, function(p) {
+                        var key = this._getRecordBucketKey(p);
+                        if (this.buckets.hasOwnProperty(key)) {
+                            var visibleCard = this.buckets[key][0];
+                            // Skip self-dependencies
+                            if (visibleCard == clickedCard) {
+                                return;
+                            }
+                            var visibleCardXy = visibleCard.getXY();
+                            /*
+                            var line = Lines.createLine(clickedCardX + xOffset, clickedCardY + yOffset, visibleCardXy[0] + xOffset, visibleCardXy[1] + yOffset, {
+                                class: "line successor",
+                            });
+                            boardEl.insertFirst(line);
+                            */
+
+                            var p = { x: clickedCardX, y: clickedCardY };
+                            var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
+                            items.push({
+                                type: "circle",
+                                fill: 'red',
+                                radius: 5,
+                                x: p.x + xOffset + successorPointOffset.x,
+                                y: p.y + yOffset + successorPointOffset.y
+
+                            });
+                            items.push({
+                                type: "circle",
+                                fill: 'red',
+                                radius: 5,
+                                x: p2.x + xOffset + predecessorPointOffset.x,
+                                y: p2.y + yOffset + predecessorPointOffset.y
+
+                            });
+                            items.push({
+                                type: "path",
+                                path: Ext.String.format("M{0} {1} L {2} {3}",
+                                    p.x + xOffset + successorPointOffset.x,
+                                    p.y + yOffset + successorPointOffset.y,
+                                    p2.x + xOffset + predecessorPointOffset.x,
+                                    p2.y + yOffset + predecessorPointOffset.y
+                                ),
+                                fill: "transparent",
+                                stroke: "green",
+                                "stroke-width": "1"
+                            });
+                        };
+                    }, this);
+                }
+            });
+
+            return Deft.promise.Promise.all([predecessorsPromise, successorsPromise]);
+        }, this);
+
+        Deft.promise.Promise.all(promises).then({
+            scope: this,
+            success: function() {
+                var boardX = 0 //boardArea.getX(),
+                var boardY = 0 //boardArea.getY()
+                this.drawComponent = Ext.create('Ext.draw.Component', {
+                    style: Ext.String.format('position:absolute; top:{0}px; left:{1}px;z-index:1000;pointer-events:none', boardY, boardX),
+                    itemId: 'dependencies',
+                    id: 'dep',
+                    viewBox: false,
+                    floating: false,
+                    //margin: 10,
+                    height: boardArea.getHeight(),
+                    width: boardArea.getWidth(),
+                    items: items
+                });
+
+                boardArea.add(this.drawComponent);
+                this.drawComponent.show();
+            }
+        });
+    },
+
     _getCardBucketKey: function(card) {
         var record = card.getRecord();
-        var iterationId = null;
+        return this._getRecordBucketKey(record);
+    },
+
+    _getRecordBucketKey: function(record) {
         var iterationKey = this._getIterationKey(record.get('Iteration'));
         var projectId = record.get('Project').ObjectID;
         var featureId = record.get('Feature').ObjectID;
@@ -592,11 +786,19 @@ Ext.define("release-tracking-with-filters", {
         var result = false;
         var key = this._getCardBucketKey(card);
         if (this.buckets.hasOwnProperty(key)) {
+            this.buckets[key].push(card);
             result = true;
         }
         else {
-            this.buckets[key] = this;
+            this.buckets[key] = [card];
         }
+        return result;
+    },
+
+    _getCardsForCard: function(card) {
+        var key = this._getCardBucketKey(card);
+        var result = this.buckets[key];
+
         return result;
     },
 
