@@ -524,10 +524,16 @@ Ext.define("release-tracking-with-filters", {
                     var feature = this.piStore.getById(featureRef);
                     return feature
                 }.bind(this),
+                getAllFeatureStories: function(card) {
+                    var cards = this._getCardsForCard(card);
+                    return _.map(cards, function(card) {
+                        return card.getRecord();
+                    });
+                }.bind(this),
                 listeners: {
                     scope: this,
                     fieldclick: function(fieldName, card) {
-                        if (fieldName == 'StoryPredecessorsAndSuccessors') {
+                        if (fieldName == 'FeatureStoriesPredecessorsAndSuccessors') {
                             this.doAmazing(card);
                         }
                     },
@@ -644,7 +650,7 @@ Ext.define("release-tracking-with-filters", {
                             var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
                             items.push({
                                 type: "circle",
-                                fill: 'red',
+                                fill: 'blue',
                                 radius: 5,
                                 x: p.x + xOffset + predecessorPointOffset.x,
                                 y: p.y + yOffset + predecessorPointOffset.y
@@ -652,7 +658,7 @@ Ext.define("release-tracking-with-filters", {
                             });
                             items.push({
                                 type: "circle",
-                                fill: 'red',
+                                fill: 'blue',
                                 radius: 5,
                                 x: p2.x + xOffset + successorPointOffset.x,
                                 y: p2.y + yOffset + successorPointOffset.y
@@ -667,7 +673,7 @@ Ext.define("release-tracking-with-filters", {
                                     p2.y + yOffset + successorPointOffset.y
                                 ),
                                 fill: "transparent",
-                                stroke: "red",
+                                stroke: "blue",
                                 "stroke-width": "1"
                             });
                         };
@@ -699,7 +705,7 @@ Ext.define("release-tracking-with-filters", {
                             var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
                             items.push({
                                 type: "circle",
-                                fill: 'red',
+                                fill: 'blue',
                                 radius: 5,
                                 x: p.x + xOffset + successorPointOffset.x,
                                 y: p.y + yOffset + successorPointOffset.y
@@ -707,7 +713,7 @@ Ext.define("release-tracking-with-filters", {
                             });
                             items.push({
                                 type: "circle",
-                                fill: 'red',
+                                fill: 'blue',
                                 radius: 5,
                                 x: p2.x + xOffset + predecessorPointOffset.x,
                                 y: p2.y + yOffset + predecessorPointOffset.y

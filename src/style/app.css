@@ -91,3 +91,11 @@
     border-color: #00FF00;
     border-bottom-style: dashed;
 }
+
+.ts-dependent-story {
+    margin-left: 15px;
+}
+
+.ts-dependent-story .icon-story {
+    display: none;
+}

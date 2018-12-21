@@ -45,4 +45,19 @@ Ext.override(Rally.ui.cardboard.plugin.CardPopover, {
             target: this.card.getEl().down('.field-content.FeaturePredecessorsAndSuccessors')
         });
     },
+
+    showFeatureStoriesPredecessorsAndSuccessors: function() {
+        var stories = this.card.getAllFeatureStories(this.card);
+        return this._createPopover({
+            field: 'FeatureStoriesDependenciesPopover',
+            record: this.card.getRecord(),
+            stories: stories,
+            offsetFromTarget: [{ x: 0, y: -8 }, { x: 15, y: 0 }, { x: 5, y: 15 }, { x: -15, y: 0 }],
+            target: this.card.getEl().down('.field-content.FeatureStoriesPredecessorsAndSuccessors')
+        });
+    }
 });
+
+Rally.ui.popover.PopoverFactory.popovers['FeatureStoriesDependenciesPopover'] = function(config) {
+    return Ext.create('FeatureStoriesDependenciesPopover', this._getConfig(config));
+}

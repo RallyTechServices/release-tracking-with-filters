@@ -41,7 +41,7 @@ Ext.define('StoryFeatureCard', {
         html.push('<td class="ts-card-content"><span class="field-content UserStories icon-story"></span></td>');
         var predSuc = record.get('PredecessorsAndSuccessors')
         if (predSuc && predSuc.Count) {
-            html.push('<td class="ts-card-content"><span class="field-content PredecessorsAndSuccessors icon-children"></span></td>');
+            html.push('<td class="ts-card-content"><span class="field-content FeatureStoriesPredecessorsAndSuccessors icon-children"></span></td>');
         }
         var featurePred = feature.Predecessors;
         var featureSucc = feature.Successors;
@@ -61,10 +61,10 @@ Ext.define('StoryFeatureCard', {
                 this.fireEvent('story', this);
             }, this);
         }
-        var predSucIcon = el.down('.PredecessorsAndSuccessors');
+        var predSucIcon = el.down('.FeatureStoriesPredecessorsAndSuccessors');
         if (predSucIcon) {
             predSucIcon.on('click', function(event, target, options) {
-                this.fireEvent('fieldclick', 'StoryPredecessorsAndSuccessors', this);
+                this.fireEvent('fieldclick', 'FeatureStoriesPredecessorsAndSuccessors', this);
             }, this, {
                 card: this
             });
