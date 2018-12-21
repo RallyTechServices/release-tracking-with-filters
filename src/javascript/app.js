@@ -304,8 +304,16 @@ Ext.define("release-tracking-with-filters", {
         var currentModelName = this.modelNames[0];
         var allProjectsContext = this.getContext().getDataContext();
         allProjectsContext.project = null;
+        var gridExporter = Ext.create('TsExportGrid', {
+            model: this.lowestPiTypePath,
+            gridId: 'pisGrid',
+            context: this.getContext(),
+            dataContext: this.currentDataContext,
+            portfolioItemTypes: this.portfolioItemTypes,
+        });
         this.grid = gridArea.add({
             xtype: 'rallygridboard',
+            id: 'pisGrid',
             context: this.getContext(),
             modelNames: this.modelNames,
             toggleState: 'grid',
@@ -351,7 +359,14 @@ Ext.define("release-tracking-with-filters", {
                         stateId: this.getModelScopedStateId(currentModelName, 'views'),
                         stateEvents: ['select', 'beforedestroy']
                     },
-                }
+                },
+                {
+                    ptype: 'rallygridboardactionsmenu',
+                    menuItems: gridExporter.getExportMenuItems(),
+                    buttonConfig: {
+                        iconCls: 'icon-export'
+                    }
+                },
             ],
             gridConfig: {
                 shouldShowRowActionsColumn: false,
