@@ -7,55 +7,61 @@ Ext.define("release-tracking-with-filters", {
         align: 'stretch'
     },
     items: [{
-        id: 'left-area',
-        xtype: 'panel',
-        border: false,
-        bodyBorder: false,
-        header: {
-            cls: 'ts-panel-header',
-            padding: '0 0 15 0'
-        },
-        cls: 'grid-area',
-        title: Constants.PORTFOLIO_ITEMS,
-        flex: 1,
-        layout: {
-            type: 'vbox',
-            align: 'stretch'
-        },
-        items: [{
-            id: 'grid-area',
-            xtype: 'container',
+            id: 'left-area',
+            region: 'west',
+            xtype: 'panel',
+            //border: false,
+            //bodyBorder: false,
+            header: {
+                cls: 'ts-panel-header',
+                padding: '0 0 15 0'
+            },
+            cls: 'grid-area',
+            title: Constants.PORTFOLIO_ITEMS,
             flex: 1,
             layout: {
                 type: 'vbox',
                 align: 'stretch'
             },
-        }]
-    }, {
-        id: 'right-area',
-        xtype: 'container',
-        flex: 2,
-        type: 'vbox',
-        align: 'stretch',
-        overflowX: 'auto',
-        overflowY: 'auto',
-        //padding: '0 0 0 20',
-        items: [{
-            id: 'date-range-area',
-            xtype: 'container',
-            layout: 'hbox',
-            padding: '15 0 15 20',
+            items: [{
+                id: 'grid-area',
+                xtype: 'container',
+                flex: 1,
+                layout: {
+                    type: 'vbox',
+                    align: 'stretch'
+                },
+            }]
         }, {
-            id: 'board-area',
+            xtype: 'splitter'
+        },
+        {
+            id: 'right-area',
+            region: 'center',
             xtype: 'container',
-            flex: 1,
+            flex: 2,
             type: 'vbox',
             align: 'stretch',
-            //overflowX: 'auto',
-            //overflowY: 'auto',
-            margin: '0 0 0 20'
-        }]
-    }],
+            overflowX: 'auto',
+            overflowY: 'auto',
+            //padding: '0 0 0 20',
+            items: [{
+                id: 'date-range-area',
+                xtype: 'container',
+                layout: 'hbox',
+                padding: '15 0 15 20',
+            }, {
+                id: 'board-area',
+                xtype: 'container',
+                flex: 1,
+                type: 'vbox',
+                align: 'stretch',
+                //overflowX: 'auto',
+                //overflowY: 'auto',
+                margin: '0 0 0 20'
+            }]
+        }
+    ],
     config: {
         defaultSettings: {},
     },
