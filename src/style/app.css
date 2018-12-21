@@ -92,10 +92,23 @@
     border-bottom-style: dashed;
 }
 
-.ts-dependent-story {
-    margin-left: 15px;
+.dependency-row.ts-dependent-story {
+    padding-left: 40px !important;
 }
 
 .ts-dependent-story .icon-story {
     display: none;
+}
+
+.ts-card-content.ts-card-icons {
+    min-width: 50px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.ts-card-content.ts-accepted-count {
+    width: 100%;
+    color: #888;
+    text-align: right;
+    cursor: pointer;
 }

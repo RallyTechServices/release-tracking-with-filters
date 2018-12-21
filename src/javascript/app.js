@@ -63,7 +63,9 @@ Ext.define("release-tracking-with-filters", {
         }
     ],
     config: {
-        defaultSettings: {},
+        defaultSettings: {
+            showDependencyLines: false
+        },
     },
 
     integrationHeaders: {
@@ -554,8 +556,8 @@ Ext.define("release-tracking-with-filters", {
                 listeners: {
                     scope: this,
                     fieldclick: function(fieldName, card) {
-                        if (fieldName == 'FeatureStoriesPredecessorsAndSuccessors') {
-                            this.doAmazing(card);
+                        if (fieldName == 'FeatureStoriesPredecessorsAndSuccessors' && this.getSetting('showDependencyLines')) {
+                            this.showStoryDependencyLines(card);
                         }
                     },
                     story: function(card) {
@@ -606,7 +608,7 @@ Ext.define("release-tracking-with-filters", {
         return boardDeferred.promise;
     },
 
-    doAmazing: function(clickedCard) {
+    showStoryDependencyLines: function(clickedCard) {
         var clickedCardX = clickedCard.getX();
         var clickedCardY = clickedCard.getY();
         var cardWidth = clickedCard.getWidth();
@@ -659,13 +661,6 @@ Ext.define("release-tracking-with-filters", {
                             if (visibleCard == clickedCard) {
                                 return;
                             }
-                            var visibleCardXy = visibleCard.getXY();
-                            /*
-                            var line = Lines.createLine(clickedCardX + xOffset, clickedCardY + yOffset, visibleCardXy[0] + xOffset, visibleCardXy[1] + yOffset, {
-                                class: "line predecessor",
-                            });
-                            boardEl.insertFirst(line);
-                            */
 
                             var p = { x: clickedCardX, y: clickedCardY };
                             var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
@@ -714,13 +709,6 @@ Ext.define("release-tracking-with-filters", {
                             if (visibleCard == clickedCard) {
                                 return;
                             }
-                            var visibleCardXy = visibleCard.getXY();
-                            /*
-                            var line = Lines.createLine(clickedCardX + xOffset, clickedCardY + yOffset, visibleCardXy[0] + xOffset, visibleCardXy[1] + yOffset, {
-                                class: "line successor",
-                            });
-                            boardEl.insertFirst(line);
-                            */
 
                             var p = { x: clickedCardX, y: clickedCardY };
                             var p2 = { x: visibleCard.getX(), y: visibleCard.getY() };
@@ -859,7 +847,9 @@ Ext.define("release-tracking-with-filters", {
 
     getSettingsFields: function() {
         return [{
-            xtype: 'container'
+            xtype: 'rallycheckboxfield',
+            name: 'showDependencyLines',
+            fieldLabel: '(Experimental) Show Story Dependency Lines'
         }];
     },
 

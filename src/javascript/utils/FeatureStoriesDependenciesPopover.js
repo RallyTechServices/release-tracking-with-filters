@@ -13,8 +13,11 @@ Ext.define('FeatureStoriesDependenciesPopover', {
         var numPredecessors = 0,
             numSuccessors = 0;
         _.each(config.stories, function(story) {
-            numPredecessors += story.get('PredecessorsAndSuccessors').Predecessors;
-            numSuccessors += story.get('PredecessorsAndSuccessors').Successors;
+            var predecessorsAndSuccessors = story.get('PredecessorsAndSuccessors');
+            if (predecessorsAndSuccessors) {
+                numPredecessors += predecessorsAndSuccessors.Predecessors;
+                numSuccessors += predecessorsAndSuccessors.Successors;
+            }
             if (numPredecessors || numSuccessors) {
                 return false; // No need to keep counting
             }
