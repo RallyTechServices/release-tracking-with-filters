@@ -1,6 +1,6 @@
 {
   "name": "release-tracking-with-filters",
-  "version": "0.0.5-alpha",
+  "version": "0.0.5",
   "scripts": {
     "debug": "grunt debug",
     "debug:watch": "nodemon --exec grunt debug",
