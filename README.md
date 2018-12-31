@@ -2,6 +2,19 @@
 
 A version the built-in Release Tracking board with additional filters.
 
+## Test Plan
+### List of Features
+* PASS - Shows all features in current project
+* PASS - Show all features in all projects
+* PASS - Milestone filter shows all features in current project
+* PASS - Milestone filter shows all features in all projects
+* PASS - Ancestor filters shows all features in current project
+* PASS - Ancestor filters shows all features in any project
+* PASS - Saved view
+
+### Board of features
+
+
 ## Development Notes
 
 ### First Load

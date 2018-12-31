@@ -3,11 +3,7 @@ Ext.define('FeatureStoriesDependenciesPopover', {
     extend: Rally.ui.popover.DependenciesPopover,
 
     titleIconCls: null,
-    title: 'Stories and their Dependencies',
-
-    constructor: function() {
-        this.callParent(arguments);
-    },
+    title: 'Stories With Dependencies',
 
     constructor: function(config) {
         var numPredecessors = 0,
@@ -49,7 +45,9 @@ Ext.define('FeatureStoriesDependenciesPopover', {
         }];
 
         this.loaded = {};
-        this.callParent(arguments);
+        //this.callSuper(arguments);
+        // Get super super method (skip the extended DependenciesPopover.constructor()
+        return this.superclass.superclass['constructor'].apply(this, arguments);
     },
 
     _loadData: function(tabTitle) {
@@ -79,17 +77,23 @@ Ext.define('FeatureStoriesDependenciesPopover', {
         _.each(stories, function(story) {
             story.tplType = this._getType(story);
             var dependencies = story.get(fieldName).Stories;
-            html.push(this.rowTpl.apply(story));
             if (dependencies && dependencies.length) {
-                // Add a row for each dependency
+                // Add a row for the story
+                html.push(this.rowTpl.apply(story));
+                // Add a row for each story dependency
                 _.each(dependencies, function(dependentStory) {
                     dependentStory.set('_dependencyType', fieldName);
                     html.push(this.depRowTpl.apply(dependentStory))
                 }, this);
             }
             else {
+                // Don't show stories with no dependencies
+                /*
                 // Add a "None" row
-                html.push(this.noneRowTpl.apply(story))
+                html.push(this.noneRowTpl.apply({
+                    _dependencyType: fieldName
+                }));
+                */
             }
         }, this);
 
@@ -201,49 +205,13 @@ Ext.define('FeatureStoriesDependenciesPopover', {
     noneRowTpl: Ext.create('Ext.XTemplate',
         '<div class="dependency-row ts-dependent-story">',
         '<div class="identifier">',
-        '<span class="{[this.getDependencyIconClass(values.data)]}"></span>',
+        '<span class="{[this.getDependencyIconClass(values)]}"></span>',
         'None',
         '</div>',
-        '<div class="status">',
-        '<tpl if="this.isUserStory(values)">',
-        '</div>',
-        '<tpl else>',
-        '</div>',
-        '<tpl if="this.hasReleaseAttr(values.data)">',
-        '<tpl else>',
-        '<span>&nbsp;</span>',
-        '</tpl>',
-        '</tpl>',
         '</div>', {
             getDependencyIconClass: function(record) {
                 return record._dependencyType == 'Predecessors' ? 'icon-predecessor' : 'icon-successor'
             },
-            isUserStory: function(record) {
-                return true;
-            },
-            getFormattedIdTemplate: function(data) {
-                return Ext.create('Rally.ui.renderer.template.FormattedIDTemplate', {
-                    showIcon: true,
-                    showHover: false
-                }).apply(data);
-            },
-            getScheduleState: function(record) {
-                return Ext.create('Rally.ui.renderer.template.ScheduleStateTemplate', {
-                    field: record.getField('ScheduleState')
-                }).apply(record.data);
-            },
-            getPercentDoneByStoryCount: function(record) {
-                return Ext.create('Rally.ui.renderer.template.progressbar.PercentDoneByStoryCountTemplate', {
-                    field: record.getField('PercentDoneByStoryCount'),
-                    record: record
-                }).apply(record.data);
-            },
-            trimText: function(data, max, defaultValue) {
-                return data && data.Name ? Ext.String.ellipsis(data.Name, max) : defaultValue;
-            },
-            hasReleaseAttr: function(data) {
-                return data.hasOwnProperty('Release');
-            }
         }
     ),
 });

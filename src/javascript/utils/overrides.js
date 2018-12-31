@@ -40,6 +40,7 @@ Ext.override(Rally.ui.cardboard.plugin.CardPopover, {
     showFeaturePredecessorsAndSuccessors: function() {
         return this._createPopover({
             field: 'PredecessorsAndSuccessors',
+            title: 'Portfolio Item Dependencies',
             //width: 750,
             record: this.card.getFeature(this.card),
             offsetFromTarget: [{ x: 0, y: -8 }, { x: 15, y: 0 }, { x: 5, y: 15 }, { x: -15, y: 0 }],

@@ -45,8 +45,21 @@ Ext.define('TsGridboardProjectScope', {
                     this.value = newValue
                     this.saveState(); // Force a state save before callers notified
                     this.cmp.fireEvent('viewstatesave', this); // This gets buffered
-                    this.fireEvent('select', newValue);
+                    var me = this;
+                    // Work around an issue where this component doesn't reliably reset saved view
+                    setTimeout(function() {
+                        me.fireEvent('select', newValue);
+                    }, 100)
                 },
+            },
+            removeCls: function(cls) {
+                var me = this,
+                    el = me.rendered ? me.el : me.protoEl;
+                // Workaround bug where there is no el or protoEl for this control cmp
+                if (el) {
+                    el.removeCls.apply(el, arguments);
+                }
+                return me;
             },
         }, this.controlConfig)
     },

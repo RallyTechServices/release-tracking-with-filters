@@ -199,7 +199,7 @@ Ext.define("release-tracking-with-filters", {
         var gridArea = this.down('#grid-area');
         var grid = this.down('rallygridboard');
         if (gridArea && grid) {
-            grid.setHeight(gridArea.getHeight() - 30)
+            grid.setHeight(gridArea.getHeight())
         }
         return;
         var boardArea = this.down('#board-area');
@@ -325,7 +325,7 @@ Ext.define("release-tracking-with-filters", {
             context: this.getContext(),
             modelNames: this.modelNames,
             toggleState: 'grid',
-            height: gridArea.getHeight() - 30,
+            height: gridArea.getHeight(),
             listeners: {
                 scope: this,
                 viewchange: this._update,
@@ -341,7 +341,7 @@ Ext.define("release-tracking-with-filters", {
                         modelNames: this.modelNames,
                         inlineFilterPanelConfig: {
                             quickFilterPanelConfig: {
-                                context: allProjectsContext,
+                                dataContext: allProjectsContext,
                                 portfolioItemTypes: this.portfolioItemTypes,
                                 modelName: this.lowestPiTypePath,
                                 whiteListFields: [
@@ -390,12 +390,15 @@ Ext.define("release-tracking-with-filters", {
                 },
                 listeners: {
                     scope: this,
+                    // TODO (tj) support multi item selection
+                    /*
                     itemclick: function(grid, record, item, index) {
                         // Ignore clicks on non root items
                         if (record.get('_type') == this.lowestPiTypePath.toLowerCase()) {
                             this._onPiSelected(record);
                         }
                     }
+                    */
                 }
             }
         });
@@ -412,10 +415,16 @@ Ext.define("release-tracking-with-filters", {
             }
         }, this);
         // If there are no PIs, then explicitly filter out all stories
-        this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || [{
+        this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || Rally.data.wsapi.Filter.and({
             property: 'ObjectID',
             value: 0
-        }];
+        });
+
+        // Only consider direct Feature children (not nested stories)
+        this.storiesFilter = this.storiesFilter.and({
+            property: 'Parent',
+            value: null
+        });
 
         var boardPromise = this._addPisBoard(this.storiesFilter, this.currentIterations).then({
             scope: this,
@@ -553,6 +562,10 @@ Ext.define("release-tracking-with-filters", {
                         return card.getRecord();
                     });
                 }.bind(this),
+                getVisibleCard: function(card) {
+                    var cards = this._getCardsForCard(card);
+                    return cards[0];
+                }.bind(this),
                 listeners: {
                     scope: this,
                     fieldclick: function(fieldName, card) {
@@ -587,6 +600,10 @@ Ext.define("release-tracking-with-filters", {
                                 value: null
                             }];
                         }
+                        filters.push({
+                            property: 'Project',
+                            value: context.project
+                        })
                         Rally.ui.popover.PopoverFactory.bake({
                             field: 'UserStory',
                             record: feature,
@@ -595,7 +612,8 @@ Ext.define("release-tracking-with-filters", {
                             listViewConfig: {
                                 gridConfig: {
                                     storeConfig: {
-                                        filters: filters
+                                        filters: filters,
+                                        context: context,
                                     },
                                     columnCfgs: Constants.STORY_COLUMNS,
                                 }
@@ -823,26 +841,6 @@ Ext.define("release-tracking-with-filters", {
 
     getModelScopedStateId: function(modelName, id) {
         return this.getContext().getScopedStateId(modelName + '-' + id);
-    },
-
-    getHeight: function() {
-        var el = this.getEl();
-        if (el) {
-            var height = this.callParent(arguments);
-            return Ext.isIE8 ? Math.max(height, 600) : height;
-        }
-
-        return 0;
-    },
-
-    setHeight: function(height) {
-        this.callParent(arguments);
-        if (this.grid) {
-            this.grid.setHeight(height);
-        }
-        if (this.board) {
-            this.board.setHeight(height);
-        }
     },
 
     getSettingsFields: function() {
