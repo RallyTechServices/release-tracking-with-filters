@@ -10,7 +10,24 @@ A version the built-in Release Tracking board with additional filters.
 * PASS - Milestone filter shows all features in all projects
 * PASS - Ancestor filters shows all features in current project
 * PASS - Ancestor filters shows all features in any project
-* PASS - Saved view
+* PASS - Saved views
+* PASS - Only plot features with stories
+* PASS - Features plotted in all projects that have stories for that feature
+* PASS - Story count correct for project
+* PASS - Story count is top-level stories
+* PASS - accepted count correct for project
+* PASS - story list correct for project
+* PASS - Story list is top-level stories
+* PASS - story dependencies correct for project
+* PASS - feature dependencies correct for project
+* PASS - List of stories specific to feature
+* PASS - List of stories specific to iteration
+* PASS - Iterations shown are specific to current project (by name and date)
+* PASS - Iterations from current project merged with matching name+dates of other projects
+* Non-timeboxed page shows date range
+* Release filtered page
+* Milestone filtered page
+* Iteration filtered page
 
 ### Board of features
 
