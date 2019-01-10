@@ -418,10 +418,7 @@ Ext.define("release-tracking-with-filters", {
             var query = Ext.create('Rally.data.wsapi.Filter', {
                 property: this.lowestPiTypeName + '.ObjectID',
                 operator: 'in',
-                value: oids,
-                filterFn: function() {
-                    console.log(arguments);
-                }
+                value: oids
             })
 
             // If there are no PIs, then explicitly filter out all stories
