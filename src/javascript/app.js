@@ -80,7 +80,7 @@ Ext.define("release-tracking-with-filters", {
             fieldLabel: Constants.START_DATE,
             labelWidth: 120,
             labelCls: 'date-label',
-            //minWidth: 200,
+            minWidth: 200,
             margin: '0 10 0 0',
             listeners: {
                 scope: this,
@@ -94,6 +94,7 @@ Ext.define("release-tracking-with-filters", {
             id: 'end-date-picker',
             fieldLabel: Constants.END_DATE,
             labelWidth: 30,
+            minWidth: 200,
             labelCls: 'date-label',
             margin: '0 10 0 0',
             listeners: {
@@ -407,18 +408,32 @@ Ext.define("release-tracking-with-filters", {
     _onGridLoad: function(grid) {
         var store = grid.getGridOrBoard().getStore();
         var root = store.getRootNode();
-        var queries = _.map(root.childNodes, function(pi) {
-            return {
-                property: this.lowestPiTypeName,
-                operator: '=',
-                value: pi.get('_ref')
-            }
-        }, this);
-        // If there are no PIs, then explicitly filter out all stories
-        this.storiesFilter = Rally.data.wsapi.Filter.or(queries) || Rally.data.wsapi.Filter.and({
-            property: 'ObjectID',
-            value: 0
-        });
+
+        if (root.childNodes && root.childNodes.length) {
+            var oids = _.map(root.childNodes, function(pi) {
+                return pi.get('ObjectID');
+            }, this).join(',');
+
+            // Performance may be better by using 'in' instead of a collection of ORs
+            var query = Ext.create('Rally.data.wsapi.Filter', {
+                property: this.lowestPiTypeName + '.ObjectID',
+                operator: 'in',
+                value: oids,
+                filterFn: function() {
+                    console.log(arguments);
+                }
+            })
+
+            // If there are no PIs, then explicitly filter out all stories
+            this.storiesFilter = query;
+        }
+        else {
+            // If there are no PIs, then explicitly filter out all stories
+            this.storiesFilter = Rally.data.wsapi.Filter.and({
+                property: 'ObjectID',
+                value: 0
+            });
+        }
 
         // Only consider direct Feature children (not nested stories)
         this.storiesFilter = this.storiesFilter.and({
@@ -486,7 +501,6 @@ Ext.define("release-tracking-with-filters", {
             });
             return {
                 xtype: 'rallycardboardcolumn',
-                //value: iteration.get('Name'),
                 columnHeaderConfig: {
                     headerTpl: headerTemplate,
                     cls: 'cardboard-column-header'
@@ -496,10 +510,6 @@ Ext.define("release-tracking-with-filters", {
                 getStoreFilter: function() {
                     // Don't return this column 'value' as a filter
                     return [{
-                            property: 'Iteration.Name',
-                            value: iteration.get('Name')
-                        },
-                        {
                             property: 'Iteration.StartDate',
                             value: iteration.get('StartDate')
                         },
