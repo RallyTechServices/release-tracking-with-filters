@@ -2,6 +2,11 @@
 
 A version the built-in Release Tracking board with additional filters.
 
+Features are plotted into every iteration where that feature has a scheduled story.
+Iterations across projects are assumed to be the same if they share the same start and end
+date as the current projet's iterations. Iteration name is explicitly NOT used to work around
+a query that sometimes causes a timeout with certain data.
+
 ## Test Plan
 ### List of Features
 * PASS - Shows all features in current project
@@ -24,10 +29,14 @@ A version the built-in Release Tracking board with additional filters.
 * PASS - List of stories specific to iteration
 * PASS - Iterations shown are specific to current project (by name and date)
 * PASS - Iterations from current project merged with matching name+dates of other projects
-* Non-timeboxed page shows date range
+* PASS - Non-timeboxed page shows date range
 * Release filtered page
+   * PASS - Showns only Features assigned to Release
 * Milestone filtered page
+   * PASS -Shows only Features directly assigned to selected Milestone (not indirect due to story assigned to milestone)
 * Iteration filtered page
+   * PASS - Shows only features with stories in selected iteration
+   * PASS - Shows "Unscheduled"
 
 ### Board of features
 
