@@ -1,6 +1,6 @@
 {
   "name": "release-tracking-with-filters",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "debug": "grunt debug",
     "debug:watch": "nodemon --exec grunt debug",
@@ -9,7 +9,7 @@
     "deploy-debugsdk:watch": "nodemon --exec grunt deploy-debugsdk"
   },
   "dependencies": {
-    "@agile-central-technical-services/utils-ancestor-pi-inline-filter": "^1.0.15",
+    "@agile-central-technical-services/utils-ancestor-pi-inline-filter": "^1.0.16",
     "@agile-central-technical-services/utils-shared-views": "^1.0.2"
   },
   "devDependencies": {
